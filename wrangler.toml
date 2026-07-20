@@ -1,0 +1,17 @@
+name = "event-tickets"
+main = "index.js"
+compatibility_date = "2026-07-01"
+
+# One shared KV namespace holds every event you ever run.
+# Run once: wrangler kv namespace create TICKETS_KV
+# Paste the returned "id" below.
+kv_namespaces = [
+  { binding = "TICKETS_KV", id = "YOUR_KV_NAMESPACE_ID" }
+]
+
+[vars]
+CF_ACCOUNT_ID = "YOUR_CLOUDFLARE_ACCOUNT_ID"
+
+# Optional: attach a custom domain in the Cloudflare dashboard
+# under Workers > event-tickets > Triggers > Custom Domains,
+# e.g. tickets.rydr.info. You only do this once, ever.
