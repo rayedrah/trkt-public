@@ -1,3 +1,5 @@
+![TRKT](assets/trkt-banner.png)
+
 # TRKT — Event Ticketing & Check-in
 
 A reusable QR-code ticketing and live check-in system that runs entirely on
