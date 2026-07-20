@@ -1,0 +1,10 @@
+# Cloudflare's local dev cache and test state - never commit this,
+# it can contain account identifiers and fake local copies of KV data.
+.wrangler/
+worker/.wrangler/
+
+# Keep the example/template files though:
+!event_config.example.json
+
+# OS clutter
+.DS_Store
