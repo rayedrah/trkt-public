@@ -2261,6 +2261,21 @@ async function handleDashboardPage(slug, env, request) {
       <div class="card">
         <h4>Custom HTML &amp; CSS</h4>
         <div class="sub">Write the ticket yourself. Leave blank to use the built-in design above.</div>
+
+        <div style="background:var(--shell-2); border:1px solid var(--seam); border-radius:10px; padding:14px 16px; margin:14px 0 18px;">
+          <div style="font-weight:700; font-size:13px; margin-bottom:6px;">How this works</div>
+          <div style="font-size:12.5px; color:var(--faint); line-height:1.6; margin-bottom:10px;">
+            The HTML box below is just the ticket's content — no <code>&lt;html&gt;</code>, <code>&lt;head&gt;</code>, or <code>&lt;body&gt;</code> tags, TRKT wraps those for you automatically. The CSS box goes straight into a <code>&lt;style&gt;</code> tag. Anywhere in either box you write one of the tags below, it gets swapped for that specific guest's real data the moment their ticket opens — this list updates automatically if you add or remove a custom field.
+          </div>
+          <div id="tpl-tokens" style="display:flex; flex-wrap:wrap; gap:6px;"></div>
+          <div class="bar" style="margin-top:14px;">
+            <button class="btn" onclick="copyAiPrompt(this)">Copy AI design prompt</button>
+          </div>
+          <div style="font-size:11.5px; color:var(--faint); margin-top:8px;">
+            Paste that into Claude, ChatGPT, or whatever you use — it explains the exact rules above plus every tag for this event, so you can just describe the vibe you want and paste back whatever HTML/CSS it gives you.
+          </div>
+        </div>
+
         <label class="lbl">HTML</label>
         <textarea id="tpl-html" class="fld" placeholder="{{name}} {{seat}} {{date}} {{venue}} {{badge}} {{checkinWindow}} {{eventName}} {{eventSubtitle}} {{footer}} {{ticketId}} {{qrImage}}">${escapeHtml(config.customTemplate?.html || "")}</textarea>
         <label class="lbl" style="margin-top:14px;">CSS</label>
@@ -2571,6 +2586,7 @@ async function handleDashboardPage(slug, env, request) {
       buildTableHead();
       buildFieldList();
       buildSearchFields();
+      buildTplTokens();
 
       const fields = customFields();
       const origin = window.location.origin;
@@ -2944,6 +2960,69 @@ async function handleDashboardPage(slug, env, request) {
       const ok = await saveTemplate();
       if (!ok) { if (win) win.close(); return; }
       if (win) win.location = url; else window.open(url, '_blank');
+    }
+
+    // Fixed tags every event has, regardless of custom fields.
+    const TPL_FIXED_TOKENS = [
+      ['{{name}}', 'Guest name'], ['{{seat}}', 'Seat'], ['{{badge}}', 'Badge'],
+      ['{{date}}', 'Event date'], ['{{venue}}', 'Venue'], ['{{checkinWindow}}', 'Check-in window text'],
+      ['{{eventName}}', 'Event name'], ['{{eventSubtitle}}', 'Event subtitle'], ['{{footer}}', 'Event footer'],
+      ['{{ticketId}}', 'Ticket ID'], ['{{qrImage}}', 'QR code image URL'],
+    ];
+
+    // Renders the token pill list under "How this works" — reruns on every
+    // refresh() so it's always accurate to this event's actual custom fields,
+    // with no separate save step for the person editing the template.
+    function buildTplTokens() {
+      const el = document.getElementById('tpl-tokens');
+      if (!el) return;
+      const pill = (tag, desc) => '<span style="display:inline-flex; align-items:center; gap:5px; background:var(--shell); border:1px solid var(--seam); border-radius:20px; padding:4px 10px; font-size:11.5px;" title="' + esc(desc) + '"><code style="color:var(--sun);">' + esc(tag) + '</code></span>';
+      let html = TPL_FIXED_TOKENS.map(([tag, desc]) => pill(tag, desc)).join('');
+      for (const f of customFields()) {
+        html += pill('{{' + f.key + '}}', f.label + ' (custom field)');
+      }
+      el.innerHTML = html;
+    }
+
+    // Builds a complete, paste-ready brief for an AI tool: explains TRKT's
+    // templating rules exactly once, lists every tag valid for THIS event
+    // (fixed + whatever custom fields it currently has), and leaves a blank
+    // for the person to describe the design they actually want. Saves
+    // everyone from re-explaining "here's how my ticket system works" by hand
+    // every time they want a new look.
+    function copyAiPrompt(btn) {
+      const fields = customFields();
+      const fixedList = TPL_FIXED_TOKENS.map(([tag, desc]) => tag + ' — ' + desc).join('\\n');
+      const customList = fields.length
+        ? fields.map((f) => '{{' + f.key + '}} — ' + f.label + ' (custom field)').join('\\n')
+        : '(this event has no custom fields yet)';
+      const eventName = (lastData && lastData.eventName) || 'my event';
+
+      const prompt = [
+        'I\\'m designing a ticket for an event called "' + eventName + '" using TRKT, a QR ticketing tool.',
+        '',
+        'TRKT renders each guest\\'s ticket by taking an HTML fragment and a CSS block I provide, and inserting them into a page it builds around them. Rules:',
+        '- The HTML I give you must be ONLY the ticket content — no <!DOCTYPE>, <html>, <head>, or <body> tags. TRKT wraps those automatically, including the mobile viewport meta tag, so the output is already mobile-responsive by default — just make sure the CSS itself uses responsive units (%, vw, clamp(), flex-wrap) rather than fixed pixel widths.',
+        '- The CSS I give you goes directly into a <style> tag in the page\\'s <head> — plain CSS only, no <style> tags of my own, and @import url(...) for Google Fonts works fine there.',
+        '- Anywhere in the HTML or CSS I write one of the tags below, TRKT replaces it with that specific guest\\'s real data when their ticket opens. All values are already HTML-escaped, so I don\\'t need to worry about that.',
+        '',
+        'Fixed tags available on every ticket:',
+        fixedList,
+        '',
+        'Tags for this event\\'s custom fields:',
+        customList,
+        '',
+        'Please design a ticket using this HTML/CSS system. Keep the QR code (' + '{{qrImage}}' + ') clearly visible and a comfortable size to scan on a phone screen, and make sure text doesn\\'t overflow on a narrow screen.',
+        '',
+        'Here\\'s the design I want: [describe the vibe, colors, theme, or reference style you\\'re going for]',
+      ].join('\\n');
+
+      navigator.clipboard.writeText(prompt);
+      if (btn) {
+        const original = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => { btn.textContent = original; }, 1200);
+      }
     }
 
     async function setPassword() {
