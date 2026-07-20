@@ -29,6 +29,10 @@ Live: https://trkt.rydr.info
   track who you've personally forwarded a ticket link to. Stored in your
   browser's `localStorage`, not KV — costs nothing, but is per-device only
   (won't sync if you check the dashboard from a different browser/computer).
+- **AI-assisted ticket design** — the Ticket Design tab lists every valid
+  template tag for that event (including its custom fields) and has a
+  one-click "Copy AI design prompt" button that hands an AI tool a complete,
+  accurate brief on TRKT's templating rules — see **Ticket templates** below.
 - **CSV export** — full guest list with attendance and arrival times.
 - **Bulk add** — append another CSV of late RSVPs without touching existing guests.
 - **Arrivals chart** — when people actually turned up, in your local timezone.
@@ -151,12 +155,29 @@ ticket if its `{{tag}}` is in the template — that's how you control what shows
 
 All guest data is HTML-escaped before substitution.
 
+**Designing a template with AI:** the Ticket Design tab shows a live list of
+every tag valid for that specific event — the fixed ones above, plus a pill
+for each of the event's own custom fields, generated straight from the same
+data the rest of the dashboard uses. It updates automatically the moment you
+add or remove a field, so it's never out of sync.
+
+Next to that list is a **Copy AI design prompt** button. It copies a
+ready-to-paste brief for Claude, ChatGPT, or any other AI tool — explaining
+TRKT's actual rendering rules (no `<html>`/`<head>`/`<body>` tags in the HTML
+box, CSS goes into a `<style>` tag automatically, mobile-responsive by
+default) and listing every tag available for that event, with a blank line
+left for you to describe the design you actually want. Paste the reply back
+into the HTML/CSS boxes. This is entirely client-side — it reads data the
+dashboard already has loaded, so it costs zero extra reads, writes, or lists.
+
 ## Free-tier limits (Cloudflare KV)
 
 - Storage 1 GB, reads 100k/day, writes 1,000/day, lists 1,000/day (resets 00:00 UTC).
 - Each check-in / add / edit / remove = 1 write. Field add/remove = 2.
   Bulk add = 2 writes total regardless of guest count.
 - The "Sent" checklist costs **zero** reads/writes/lists — it's browser-only.
+- The AI design prompt feature (token list + copy button) also costs **zero**
+  reads/writes/lists — it's built entirely from data already loaded client-side.
 - Rate limiting on login attempts and event creation is in-memory, not
   KV-backed, so it also costs zero reads/writes/lists.
 - Finalize guest lists a day before the event so edits and check-ins don't stack
